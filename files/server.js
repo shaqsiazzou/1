@@ -4,7 +4,6 @@ const fsp = require('fs').promises;
 const path = require('path');
 const tar = require('tar');
 const basicAuth = require('basic-auth');
-const morgan = require('morgan');
 
 const PORT = process.env.PORT || 8787;
 const DATA_DIR = process.env.DATA_DIR || '/root/sillytavern/data';
@@ -56,9 +55,7 @@ function authGuard(req, res, next) {
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-// HTTP access log (before static/auth)
-app.use(morgan('combined', { stream: { write: (str) => pushLog('http', str.trim()) } }));
-// HTTP 请求日志（写入内存缓冲，便于前端查看）
+// 仅保留业务关键日志，去除 HTTP 访问日志
 
 // 接口鉴权（与 nano 版本一致：先鉴权，再提供静态 UI）
 app.use(authGuard);
@@ -69,6 +66,7 @@ app.use('/', express.static(PUBLIC_DIR));
 
 // 健康检查
 app.get('/health', async (req, res) => {
+  console.log('[health] ok');
   res.json({ ok: true, dataDir: DATA_DIR, backupDir: BACKUP_DIR });
 });
 
@@ -90,7 +88,6 @@ app.post('/backup', async (req, res) => {
   const name = `st-data-${ts}.tar.gz`;
   const out = path.join(BACKUP_DIR, name);
   const t0 = Date.now();
-  console.log(`[backup] start name=${name} cwd=${DATA_DIR}`);
   try {
     await ensureDir(BACKUP_DIR);
     await tar.c({
@@ -122,8 +119,10 @@ app.get('/list', async (req, res) => {
       list.push({ name: d.name, size: st.size, mtime: st.mtime });
     }
     list.sort((a,b)=> new Date(b.mtime)-new Date(a.mtime));
+    console.log(`[list] ok count=${list.length}`);
     res.json({ ok: true, items: list });
   } catch (e) {
+    console.error('[list] error:', e && e.stack || e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -132,7 +131,6 @@ app.get('/list', async (req, res) => {
 app.post('/restore', async (req, res) => {
   const name = (req.query.name || req.body?.name || '').toString();
   const t0 = Date.now();
-  console.log(`[restore] start name=${name}`);
   try {
     if (!name) return res.status(400).json({ ok: false, error: 'name required' });
     const file = path.join(BACKUP_DIR, path.basename(name));
@@ -153,8 +151,10 @@ app.delete('/delete', async (req, res) => {
     if (!name) return res.status(400).json({ ok: false, error: 'name required' });
     const file = path.join(BACKUP_DIR, path.basename(name));
     await fsp.unlink(file);
+    console.log(`[delete] done name=${name}`);
     res.json({ ok: true });
   } catch (e) {
+    console.error('[delete] error:', e && e.stack || e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
