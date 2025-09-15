@@ -1,104 +1,329 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Remote Backup</title>
-<style>
-  :root{--bg:#111216;--panel:#1b1d23;--border:#2a2d35;--text:#e9eaee;--muted:#9aa0aa;--accent:#6ea8fe;--warn:#f0ad4e;--danger:#ff6b6b;--ok:#6ee7a8}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:980px;margin:0 auto;padding:18px}
-  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-  .badge{padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:var(--panel);color:var(--muted)}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.25)}
-  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  button{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:#232630;color:var(--text);cursor:pointer}
-  button:hover{border-color:#3a4353}
-  .btn-accent{background:linear-gradient(180deg,#2a66ff,#244ee6);border:none}
-  .btn-warn{background:#3b2f16;border:1px solid #8a6d3b;color:#f5d08a}
-  .btn-danger{background:#3b1b1b;border:1px solid #8a3b3b;color:#ff9b9b}
-  .status{margin-top:10px;color:var(--muted)}
-  .status.ok{color:var(--ok)} .status.err{color:var(--danger)}
-  .tr{display:grid;grid-template-columns:1fr 110px 140px;gap:10px;align-items:center;background:#191b22;border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0}
-  .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .size{color:var(--muted)}
-  .actions{display:flex;gap:8px;justify-content:flex-end}
-</style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>远程备份控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a18;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.1) 1px, transparent 0);
+            background-size: 2rem 2rem;
+            overflow: hidden;
+        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .glow-on-hover { position: relative; z-index: 0; transition: all 0.3s ease; }
+        .glow-on-hover:before {
+            content: '';
+            background: linear-gradient(45deg, #4f46e5, #ec4899, #22d3ee, #8b5cf6, #4f46e5);
+            position: absolute; top: -2px; left: -2px;
+            background-size: 400%; z-index: -1;
+            filter: blur(8px);
+            width: calc(100% + 4px); height: calc(100% + 4px);
+            opacity: 0; transition: opacity .3s ease-in-out;
+            border-radius: 0.75rem;
+            animation: glowing 20s linear infinite;
+        }
+        .glow-on-hover:hover:before { opacity: 1; }
+        @keyframes glowing {
+            0% { background-position: 0 0; }
+            50% { background-position: 400% 0; }
+            100% { background-position: 0 0; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .list-item-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(30, 227, 207, 0.3); border-radius: 10px;
+            border: 2px solid transparent; background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(30, 227, 207, 0.5); }
+    </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="hdr">
-      <h2 style="margin:0">Remote Backup</h2>
-      <span class="badge">SFTP 微服务 · 端口 8787</span>
-    </div>
-    <div class="card">
-      <div class="row">
-        <button id="health">健康检查</button>
-        <button class="btn-accent" id="backup">创建备份</button>
-        <button id="refresh">刷新列表</button>
-      </div>
-      <div id="status" class="status">就绪（首次访问会弹出一次账号/密码）</div>
-    </div>
-    <div class="card">
-      <div class="row"><h3 style="margin:0;font-size:16px">备份列表</h3></div>
-      <div id="list" style="margin-top:8px"></div>
-    </div>
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0;font-size:16px">日志</h3>
-        <div style="display:flex;gap:8px">
-          <button id="log-refresh">刷新</button>
-          <button id="log-toggle">自动刷新: 开</button>
-          <button id="log-clear" class="btn-danger">清空</button>
+<body class="text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto">
+        <!-- 登录界面 (默认显示) -->
+        <div id="login-screen">
+            <div class="bg-slate-900/70 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl shadow-cyan-500/10 p-8 max-w-md mx-auto">
+                <div class="text-center mb-6">
+                    <h1 class="font-orbitron text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">身份验证</h1>
+                    <p class="text-slate-400 text-sm mt-1">连接到远程备份服务</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="user" class="text-sm font-medium text-slate-300">用户名</label>
+                        <input id="user" type="text" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
+                    </div>
+                    <div>
+                        <label for="pass" class="text-sm font-medium text-slate-300">密码</label>
+                        <input id="pass" type="password" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
+                    </div>
+                </div>
+                <div id="login-status" class="h-6 text-center text-red-400 text-sm mt-4"></div>
+                <button id="connect-btn" class="glow-on-hover w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 mt-6">
+                    <svg id="connect-loader" class="animate-spin h-5 w-5 text-slate-900 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span id="connect-text">安全连接</span>
+                </button>
+            </div>
         </div>
-      </div>
-      <pre id="log-box" style="margin-top:8px;background:#0f1115;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:45vh;overflow:auto;white-space:pre-wrap"></pre>
+
+        <!-- 主控制台界面 (默认隐藏) -->
+        <div id="console-screen" class="hidden">
+            <div class="bg-slate-900/70 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl shadow-cyan-500/10">
+                <div class="p-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h1 class="font-orbitron text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">REMOTE BACKUP CONSOLE</h1>
+                        <p class="text-slate-400 text-sm">远程备份服务控制台</p>
+                    </div>
+                    <div id="status" class="h-6 flex items-center justify-center gap-2 px-3 py-1 bg-slate-800/50 rounded-full text-sm">
+                        <svg id="loader" class="animate-spin h-4 w-4 text-cyan-400 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="status-text" class="transition-colors duration-300">就绪</span>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <button id="backup" class="glow-on-hover col-span-1 sm:col-span-1 flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            创建新备份
+                        </button>
+                        <button id="refresh" class="col-span-1 sm:col-span-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-5 rounded-xl transition-colors duration-300">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                            刷新列表
+                        </button>
+                        <button id="health" class="col-span-1 sm:col-span-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-5 rounded-xl transition-colors duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                            健康检查
+                        </button>
+                    </div>
+                    <div id="list" class="custom-scrollbar bg-slate-900/60 p-2 sm:p-4 rounded-lg min-h-[250px] max-h-[50vh] overflow-y-auto border border-slate-800"></div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-<script>
-(function(){
-  const $ = s => document.querySelector(s);
-  const statusEl = $('#status');
-  const listEl = $('#list');
-  async function api(method, path){
-    const res = await fetch(path, { method, headers:{'Content-Type':'application/json'} });
-    const txt = await res.text();
-    try{ return JSON.parse(txt); }catch{ return { ok:false, raw:txt }; }
-  }
-  function human(n){ return (n/1048576).toFixed(2)+' MB'; }
-  function setStatus(msg, type){ statusEl.textContent = msg; statusEl.className = 'status' + (type ? ' '+type : ''); }
-  async function health(){ setStatus('检查中...'); const r=await api('GET','/health'); setStatus(r.ok?`OK · dataDir=${r.dataDir} · backupDir=${r.backupDir}`:`失败: ${r.error||r.raw||''}`, r.ok?'ok':'err'); }
-  async function backup(){ setStatus('备份中...（数据大时需等待）'); const r=await api('POST','/backup'); setStatus(r.ok?('备份完成: '+r.file):('失败: '+(r.error||r.raw||'')), r.ok?'ok':'err'); if(r.ok) refresh(); }
-  function render(items){
-    listEl.innerHTML=''; if(!items||!items.length){ listEl.innerHTML='<div class="status">暂无备份</div>'; return; }
-    items.forEach(it=>{
-      const row=document.createElement('div'); row.className='tr';
-      row.innerHTML=`<div class="name" title="${it.name}">${it.name}</div><div class="size">${human(it.size)}</div>
-        <div class="actions"><button class="btn-warn" data-act="restore">恢复</button><button class="btn-danger" data-act="delete">删除</button></div>`;
-      row.querySelector('[data-act="restore"]').onclick=async()=>{ if(!confirm('确定恢复并覆盖 data/?'))return; setStatus('恢复中...'); const r=await api('POST','/restore?name='+encodeURIComponent(it.name)); setStatus(r.ok?'恢复完成':('恢复失败: '+(r.error||r.raw||'')), r.ok?'ok':'err'); };
-      row.querySelector('[data-act="delete"]').onclick=async()=>{ if(!confirm('确定删除该备份?'))return; setStatus('删除中...'); const r=await api('DELETE','/delete?name='+encodeURIComponent(it.name)); setStatus(r.ok?'已删除':('删除失败: '+(r.error||r.raw||'')), r.ok?'ok':'err'); if(r.ok) refresh(); };
-      listEl.appendChild(row);
-    });
-  }
-  async function refresh(){ setStatus('加载列表...'); const r=await api('GET','/list'); if(!r.ok){ setStatus('失败: '+(r.error||r.raw||''),'err'); return; } setStatus(`共有 ${r.items?.length||0} 个备份`,'ok'); render(r.items); }
-  $('#health').onclick=health; $('#backup').onclick=backup; $('#refresh').onclick=refresh;
-  refresh().catch(()=>{});
-  // 日志面板
-  const logBox = document.getElementById('log-box');
-  const btnLogRefresh = document.getElementById('log-refresh');
-  const btnLogToggle = document.getElementById('log-toggle');
-  const btnLogClear = document.getElementById('log-clear');
-  let logAuto = true; let logTimer = null;
-  async function loadLogs(){
-    try { const r = await fetch('/logs?limit=500'); const j = await r.json();
-      logBox.textContent = (j.lines||[]).join('\n'); logBox.scrollTop = logBox.scrollHeight; } catch(e) {}
-  }
-  function startLogAuto(){ if (logTimer) clearInterval(logTimer); logTimer = setInterval(()=>{ if (logAuto) loadLogs(); }, 2000); }
-  btnLogRefresh?.addEventListener('click', loadLogs);
-  btnLogToggle?.addEventListener('click', ()=>{ logAuto=!logAuto; btnLogToggle.textContent = `自动刷新: ${logAuto?'开':'关'}`; if (logAuto) loadLogs(); });
-  btnLogClear?.addEventListener('click', async ()=>{ await fetch('/logs',{method:'DELETE'}); logBox.textContent=''; });
-  loadLogs(); startLogAuto();
-})();
-</script>
+    
+    <div id="custom-confirm" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800/80 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6 text-center transform transition-all duration-300 scale-95 opacity-0">
+            <div id="confirm-icon" class="mx-auto mb-4"></div>
+            <h3 id="confirm-title" class="text-xl font-bold text-white mb-2"></h3>
+            <p id="confirm-message" class="text-slate-300 mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-cancel" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-6 rounded-lg transition-colors">取消</button>
+                <button id="confirm-ok" class="text-white font-bold py-2 px-6 rounded-lg transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        const $ = s => document.querySelector(s);
+
+        const loginScreen = $('#login-screen');
+        const userI = $('#user');
+        const passI = $('#pass');
+        const connectBtn = $('#connect-btn');
+        const connectLoader = $('#connect-loader');
+        const connectText = $('#connect-text');
+        const loginStatus = $('#login-status');
+        const consoleScreen = $('#console-screen');
+        const stText = $('#status-text');
+        const loader = $('#loader');
+        const list = $('#list');
+        const confirmModal = $('#custom-confirm');
+        const confirmDialog = confirmModal.querySelector('div');
+        const confirmTitle = $('#confirm-title');
+        const confirmMessage = $('#confirm-message');
+        const confirmOkBtn = $('#confirm-ok');
+        const confirmCancelBtn = $('#confirm-cancel');
+        const confirmIcon = $('#confirm-icon');
+
+        let confirmCallback = null;
+
+        function auth() { return 'Basic ' + btoa(userI.value + ':' + passI.value); }
+        function loadCfg() { try { const c = JSON.parse(localStorage.getItem('rb-ui-auth') || '{}'); if (c.user) userI.value = c.user; if (c.pass) passI.value = c.pass; } catch {} }
+        function saveCfg() { localStorage.setItem('rb-ui-auth', JSON.stringify({ user: userI.value, pass: passI.value })); }
+
+        async function api(method, path) {
+            try {
+                const response = await fetch(path, { method: method, headers: { 'Authorization': auth(), 'Content-Type': 'application/json' }});
+                if (response.status === 401) { return { ok: false, error: '认证失败，请检查用户名和密码' }; }
+                const text = await response.text();
+                return JSON.parse(text);
+            } catch (err) {
+                return { ok: false, raw: '网络请求失败或服务器无响应。' };
+            }
+        }
+        
+        async function connect() {
+            if (!userI.value || !passI.value) { loginStatus.textContent = "用户名和密码不能为空。"; return; }
+            loginStatus.textContent = "";
+            connectLoader.classList.remove('hidden');
+            connectText.textContent = "连接中...";
+            connectBtn.disabled = true;
+            const r = await api('GET', '/health');
+            if (r.ok) {
+                saveCfg();
+                loginScreen.classList.add('hidden');
+                consoleScreen.classList.remove('hidden');
+                refresh();
+            } else {
+                loginStatus.textContent = r.error || r.raw || "连接失败。";
+                connectLoader.classList.add('hidden');
+                connectText.textContent = "安全连接";
+                connectBtn.disabled = false;
+            }
+        }
+
+        function updateStatus(text, type = 'info') {
+            stText.textContent = text;
+            if (type === 'loading') { loader.classList.remove('hidden'); stText.className = 'text-cyan-400'; }
+            else { loader.classList.add('hidden');
+                if (type === 'success') stText.className = 'text-green-400';
+                else if (type === 'error') stText.className = 'text-red-400';
+                else stText.className = 'text-slate-400';
+            }
+        }
+        
+        async function health() {
+            updateStatus('检查中...', 'loading');
+            const r = await api('GET', '/health');
+            updateStatus(r.ok ? `服务正常` : `检查失败: ${r.error || r.raw}`, r.ok ? 'success' : 'error');
+        }
+
+        async function backup() {
+            updateStatus('正在创建备份...', 'loading');
+            const r = await api('POST', '/backup');
+            updateStatus(r.ok ? `备份完成: ${r.file}` : `备份失败: ${r.error || r.raw}`, r.ok ? 'success' : 'error');
+            if (r.ok) refresh();
+        }
+
+        async function refresh() {
+            updateStatus('正在加载列表...', 'loading');
+            list.innerHTML = '';
+            const r = await api('GET', '/list');
+            if (!r.ok) {
+                updateStatus(`加载失败: ${r.error || r.raw}`, 'error');
+                list.innerHTML = `<div class="text-center text-slate-500 p-8">无法加载备份列表。</div>`;
+                return;
+            }
+            updateStatus(`共找到 ${r.items?.length || 0} 个备份`, 'info');
+            render(r.items);
+        }
+        
+        // --- 更新：更精准的时间解析函数 ---
+        function parseDateTimeFromFilename(name) {
+            const match = name.match(/(\d{4}-\d{2}-\d{2})[_-](\d{2}-\d{2}-\d{2})/);
+            if (match && match.length >= 3) {
+                const date = match[1];
+                const time = match[2].replace(/-/g, ':');
+                return `${date} ${time}`;
+            }
+            const dateOnlyMatch = name.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dateOnlyMatch) {
+                return dateOnlyMatch[1];
+            }
+            return null;
+        }
+
+        // --- 渲染函数 (已更新布局) ---
+        function render(items) {
+            if (!items || items.length === 0) {
+                list.innerHTML = `<div class="text-center text-slate-500 p-8">暂无备份文件，请创建一个新备份。</div>`;
+                return;
+            }
+            
+            items.forEach((it, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'list-item-fade-in flex items-center gap-4 px-4 py-3 my-2 rounded-lg border border-transparent hover:border-cyan-500/30 hover:bg-slate-800/50 transition-all duration-300';
+                itemDiv.style.animationDelay = `${index * 50}ms`;
+
+                const backupTime = parseDateTimeFromFilename(it.name);
+
+                itemDiv.innerHTML = `
+                    <div class="flex-shrink-0 text-cyan-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <p class="font-medium text-slate-200 text-sm truncate" title="${it.name}">${it.name}</p>
+                        <div class="flex flex-col sm:flex-row sm:justify-between text-xs text-slate-400 mt-1.5">
+                            <span class="font-mono">${(it.size / 1048576).toFixed(2)} MB</span>
+                            ${backupTime ? `<span class="font-mono">${backupTime}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <button class="restore-btn flex items-center p-2 text-yellow-400 hover:text-white hover:bg-yellow-500/20 rounded-md transition-colors" title="恢复">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        </button>
+                        <button class="delete-btn flex items-center p-2 text-red-400 hover:text-white hover:bg-red-500/20 rounded-md transition-colors" title="删除">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                `;
+
+                itemDiv.querySelector('.restore-btn').onclick = () => {
+                    showConfirm('确认恢复', `确定要使用 <strong>${it.name}</strong> 覆盖当前数据吗？`, async () => {
+                        updateStatus('恢复中...', 'loading');
+                        const r = await api('POST', '/restore?name=' + encodeURIComponent(it.name));
+                        updateStatus(r.ok ? '恢复完成' : `恢复失败: ${r.error || r.raw}`, r.ok ? 'success' : 'error');
+                    }, 'restore');
+                };
+                itemDiv.querySelector('.delete-btn').onclick = () => {
+                    showConfirm('确认删除', `确定要永久删除 <strong>${it.name}</strong> 吗？此操作无法撤销。`, async () => {
+                        updateStatus('删除中...', 'loading');
+                        const r = await api('DELETE', '/delete?name=' + encodeURIComponent(it.name));
+                        updateStatus(r.ok ? '已删除' : `删除失败: ${r.error || r.raw}`, r.ok ? 'success' : 'error');
+                        if (r.ok) refresh();
+                    }, 'delete');
+                };
+                list.appendChild(itemDiv);
+            });
+        }
+        
+        function showConfirm(title, message, onConfirm, type = 'delete') {
+            confirmTitle.textContent = title;
+            confirmMessage.innerHTML = message;
+            confirmCallback = onConfirm;
+            if (type === 'delete') {
+                confirmOkBtn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors';
+                confirmIcon.innerHTML = `<svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            } else if (type === 'restore') {
+                confirmOkBtn.className = 'bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors';
+                confirmIcon.innerHTML = `<svg class="w-12 h-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            }
+            confirmModal.classList.remove('hidden');
+            setTimeout(() => { confirmDialog.classList.remove('scale-95', 'opacity-0'); }, 10);
+        }
+
+        function hideConfirm() {
+            confirmDialog.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { confirmModal.classList.add('hidden'); confirmCallback = null; }, 300);
+        }
+
+        connectBtn.onclick = connect;
+        passI.addEventListener('keypress', (e) => { if (e.key === 'Enter') connect(); });
+        userI.addEventListener('keypress', (e) => { if (e.key === 'Enter') connect(); });
+        $('#health').onclick = health;
+        $('#backup').onclick = backup;
+        $('#refresh').onclick = refresh;
+        confirmOkBtn.onclick = () => { if (confirmCallback) confirmCallback(); hideConfirm(); };
+        confirmCancelBtn.onclick = hideConfirm;
+
+        loadCfg();
+
+    })();
+    </script>
 </body>
 </html>
+
+
