@@ -47,7 +47,6 @@ function shouldInclude(relPath) {
 
 function authGuard(req, res, next) {
   if (!USER && !PASS) return next();
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
   const creds = basicAuth(req);
   if (creds && creds.name === USER && creds.pass === PASS) return next();
   res.set('WWW-Authenticate', 'Basic realm="st-backup"');
@@ -61,12 +60,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined', { stream: { write: (str) => pushLog('http', str.trim()) } }));
 // HTTP 请求日志（写入内存缓冲，便于前端查看）
 
-// 静态页面（UI 不鉴权），如需统一鉴权可移至 authGuard 之后
+// 接口鉴权（与 nano 版本一致：先鉴权，再提供静态 UI）
+app.use(authGuard);
+
+// 静态页面（UI 需要 Basic Auth）
 const PUBLIC_DIR = path.join(__dirname, 'public');
 app.use('/', express.static(PUBLIC_DIR));
-
-// 接口鉴权
-app.use(authGuard);
 
 // 健康检查
 app.get('/health', async (req, res) => {
@@ -161,7 +160,7 @@ app.delete('/delete', async (req, res) => {
 });
 
 // 日志获取/清空
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`[st-remote-backup] listening on ${PORT}, DATA_DIR=${DATA_DIR}, BACKUP_DIR=${BACKUP_DIR}`);
 });
 
