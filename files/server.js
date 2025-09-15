@@ -4,6 +4,7 @@ const fsp = require('fs').promises;
 const path = require('path');
 const tar = require('tar');
 const basicAuth = require('basic-auth');
+const morgan = require('morgan');
 
 const PORT = process.env.PORT || 8787;
 const DATA_DIR = process.env.DATA_DIR || '/root/sillytavern/data';
@@ -12,6 +13,20 @@ const USER = process.env.BASIC_USER || '';
 const PASS = process.env.BASIC_PASS || '';
 
 async function ensureDir(dir) { await fsp.mkdir(dir, { recursive: true }).catch(()=>{}); }
+
+// 内存日志环形缓冲（用于 /logs 页面展示）
+const LOG_BUF = [];
+const LOG_MAX = 2000;
+const __origLog = console.log;
+const __origErr = console.error;
+function pushLog(level, msg) {
+  const line = `${new Date().toISOString()} [${level}] ${msg}`;
+  LOG_BUF.push(line);
+  if (LOG_BUF.length > LOG_MAX) LOG_BUF.splice(0, LOG_BUF.length - LOG_MAX);
+  (level === 'error' ? __origErr : __origLog)(line);
+}
+console.log = (...a) => pushLog('info', a.join(' '));
+console.error = (...a) => pushLog('error', a.join(' '));
 
 // 排除规则：保留核心数据，避免将缓存/归档/仓库历史打入备份
 const EXCLUDE_SEGMENTS_ALWAYS = new Set(['.git', 'node_modules']);
@@ -41,6 +56,8 @@ function authGuard(req, res, next) {
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
+// HTTP 请求日志（写入内存缓冲，便于前端查看）
+app.use(morgan('combined', { stream: { write: (str) => pushLog('http', str.trim()) } }));
 
 // 静态页面（UI 不鉴权），如需统一鉴权可移至 authGuard 之后
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -52,6 +69,18 @@ app.use(authGuard);
 // 健康检查
 app.get('/health', async (req, res) => {
   res.json({ ok: true, dataDir: DATA_DIR, backupDir: BACKUP_DIR });
+});
+
+// 获取最近日志（默认 500 行）
+app.get('/logs', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '500', 10), LOG_MAX);
+  res.json({ lines: LOG_BUF.slice(-limit) });
+});
+
+// 清空日志
+app.delete('/logs', (req, res) => {
+  LOG_BUF.length = 0;
+  res.json({ ok: true });
 });
 
 // 创建备份

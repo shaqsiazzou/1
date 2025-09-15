@@ -43,6 +43,17 @@
       <div class="row"><h3 style="margin:0;font-size:16px">备份列表</h3></div>
       <div id="list" style="margin-top:8px"></div>
     </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0;font-size:16px">日志</h3>
+        <div style="display:flex;gap:8px">
+          <button id="log-refresh">刷新</button>
+          <button id="log-toggle">自动刷新: 开</button>
+          <button id="log-clear" class="btn-danger">清空</button>
+        </div>
+      </div>
+      <pre id="log-box" style="margin-top:8px;background:#0f1115;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:45vh;overflow:auto;white-space:pre-wrap"></pre>
+    </div>
   </div>
 <script>
 (function(){
@@ -72,6 +83,21 @@
   async function refresh(){ setStatus('加载列表...'); const r=await api('GET','/list'); if(!r.ok){ setStatus('失败: '+(r.error||r.raw||''),'err'); return; } setStatus(`共有 ${r.items?.length||0} 个备份`,'ok'); render(r.items); }
   $('#health').onclick=health; $('#backup').onclick=backup; $('#refresh').onclick=refresh;
   refresh().catch(()=>{});
+  // 日志面板
+  const logBox = document.getElementById('log-box');
+  const btnLogRefresh = document.getElementById('log-refresh');
+  const btnLogToggle = document.getElementById('log-toggle');
+  const btnLogClear = document.getElementById('log-clear');
+  let logAuto = true; let logTimer = null;
+  async function loadLogs(){
+    try { const r = await fetch('/logs?limit=500'); const j = await r.json();
+      logBox.textContent = (j.lines||[]).join('\n'); logBox.scrollTop = logBox.scrollHeight; } catch(e) {}
+  }
+  function startLogAuto(){ if (logTimer) clearInterval(logTimer); logTimer = setInterval(()=>{ if (logAuto) loadLogs(); }, 2000); }
+  btnLogRefresh?.addEventListener('click', loadLogs);
+  btnLogToggle?.addEventListener('click', ()=>{ logAuto=!logAuto; btnLogToggle.textContent = `自动刷新: ${logAuto?'开':'关'}`; if (logAuto) loadLogs(); });
+  btnLogClear?.addEventListener('click', async ()=>{ await fetch('/logs',{method:'DELETE'}); logBox.textContent=''; });
+  loadLogs(); startLogAuto();
 })();
 </script>
 </body>
