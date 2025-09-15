@@ -3,13 +3,13 @@ set -euo pipefail
 
 # SillyTavern Remote Backup (8787) one-click installer
 # Usage examples:
-#   sudo bash install.sh -p 8787 -d /root/sillytavern/data -b /opt/st-remote-backup/backups -u xiu -w 960718 --cron "0 8 * * *" --keep 5
+#   sudo bash install.sh -p 8787 -d '/root/sillytavern/data' -b '/opt/st-remote-backup/backups' -u st -w 2025 --cron "0 8 * * *" --keep 5
 
 PORT=8787
 DATA_DIR="/root/sillytavern/data"
 BACKUP_DIR="/opt/st-remote-backup/backups"
-BASIC_USER="xiu"
-BASIC_PASS="960718"
+BASIC_USER="st"
+BASIC_PASS="2025"
 CRON_EXPR=""
 KEEP_NUM=5
 NO_FIREWALL=0

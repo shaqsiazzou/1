@@ -4,7 +4,7 @@
 
 ## 特性
 - 一键安装脚本，开箱即用（pm2 后台守护、自启）
-- 网页 UI 操作（首次访问弹出一次 Basic 认证）
+- 网页 UI 操作（页面内输入账号密码登录，不弹出浏览器 Basic 框）
 - 排除 `.git/ node_modules/`、缓存与已有归档，备份专注核心数据
 - 覆盖式恢复：备份中存在的文件覆盖同名文件，本地多余文件保留（更安全）
 - 可选每日自动备份，保留最近 N 份
@@ -23,11 +23,11 @@ sudo bash install.sh
 - 数据目录：/root/sillytavern/data
 - 备份目录：/opt/st-remote-backup/backups
 - 端口：8787
-- 账号/密码：xiu / 960718（访问 8787 网页或接口使用；可自行更改）
+- 账号/密码：st / 2025（访问 8787 网页或接口使用；可自行更改）
 
 完成后访问：
 - 健康检查（本机）：`curl -u 'xiu:960718' http://127.0.0.1:8787/health`
-- 浏览器打开：`http://你的服务器IP:8787/`（首次会弹出 Basic 认证）
+- 浏览器打开：`http://你的服务器IP:8787/`（页面内输入账号/密码并“安全连接”）
 
 > 提示：安装脚本会尽力放行系统防火墙端口；云安全组请在控制台放行 8787/TCP。
 
@@ -37,17 +37,23 @@ sudo bash install.sh
 ```bash
 sudo bash install.sh \
   -p 8787 \
-  -d /root/sillytavern/data \
-  -b /opt/st-remote-backup/backups \
-  -u xiu -w 960718 \
+  -d '/root/sillytavern/data' \
+  -b '/opt/st-remote-backup/backups' \
+  -u st -w 2025 \
   --cron "0 8 * * *" \
   --keep 5
 ```
 - `-p|--port` 监听端口（默认 8787）
 - `-d|--data` SillyTavern 数据目录（默认 /root/sillytavern/data）
 - `-b|--backup-dir` 备份目录（默认 /opt/st-remote-backup/backups）
-- `-u|--user` Basic 用户名（默认 xiu）
-- `-w|--pass` Basic 密码（默认 960718）
+- `-u|--user` Basic 用户名（默认 st）
+- `-w|--pass` Basic 密码（默认 2025）
+
+提示：路径建议加引号，尤其包含空格/特殊字符时，例如：
+
+```bash
+sudo bash install.sh -d '/data/data/com.termux/files/home/SillyTavern/data'
+```
 - `--cron` 安装系统定时任务（cron 表达式，不传则不装定时）
 - `--keep` 保留备份份数（配合 `--cron` 使用，默认 5）
 - `--no-firewall` 跳过自动放行系统防火墙
@@ -63,12 +69,12 @@ sudo bash install.sh \
 
 接口示例：
 ```bash
-# 认证统一使用 Basic（首次访问网页也会弹窗）
-curl -u 'xiu:960718' http://IP:8787/health
-curl -u 'xiu:960718' -X POST http://IP:8787/backup
-curl -u 'xiu:960718' http://IP:8787/list
-curl -u 'xiu:960718' -X POST "http://IP:8787/restore?name=st-data-....tar.gz"
-curl -u 'xiu:960718' -X DELETE "http://IP:8787/delete?name=st-data-....tar.gz"
+# 认证统一使用 Basic（网页内输入账号密码后由前端发起，浏览器不弹窗）
+curl -u 'st:2025' http://IP:8787/health
+curl -u 'st:2025' -X POST http://IP:8787/backup
+curl -u 'st:2025' http://IP:8787/list
+curl -u 'st:2025' -X POST "http://IP:8787/restore?name=st-data-....tar.gz"
+curl -u 'st:2025' -X DELETE "http://IP:8787/delete?name=st-data-....tar.gz"
 ```
 
 ---

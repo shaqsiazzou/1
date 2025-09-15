@@ -57,12 +57,12 @@ app.use(express.json({ limit: '1mb' }));
 
 // 仅保留业务关键日志，去除 HTTP 访问日志
 
-// 接口鉴权（与 nano 版本一致：先鉴权，再提供静态 UI）
-app.use(authGuard);
-
-// 静态页面（UI 需要 Basic Auth）
+// 静态页面（UI 不鉴权，避免浏览器弹出 Basic 框）
 const PUBLIC_DIR = path.join(__dirname, 'public');
 app.use('/', express.static(PUBLIC_DIR));
+
+// 接口鉴权（仅保护 API，由页面内输入账号密码发起请求）
+app.use(authGuard);
 
 // 健康检查
 app.get('/health', async (req, res) => {
