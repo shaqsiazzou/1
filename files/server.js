@@ -5,7 +5,6 @@ const path = require('path');
 const tar = require('tar');
 const basicAuth = require('basic-auth');
 const morgan = require('morgan');
-const morgan = require('morgan');
 
 const PORT = process.env.PORT || 8787;
 const DATA_DIR = process.env.DATA_DIR || '/root/sillytavern/data';
@@ -58,24 +57,9 @@ function authGuard(req, res, next) {
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
-// In-memory log buffer & console wrapper
-const LOG_BUF = [];
-const LOG_MAX = 2000;
-const _origLog = console.log.bind(console);
-const _origErr = console.error.bind(console);
-function pushLog(level, msg) {
-  const line = `${new Date().toISOString()} [${level}] ${msg}`;
-  LOG_BUF.push(line);
-  if (LOG_BUF.length > LOG_MAX) LOG_BUF.splice(0, LOG_BUF.length - LOG_MAX);
-  if (level === 'error') _origErr(line); else _origLog(line);
-}
-console.log = (...a) => pushLog('info', a.join(' '));
-console.error = (...a) => pushLog('error', a.join(' '));
-
 // HTTP access log (before static/auth)
 app.use(morgan('combined', { stream: { write: (str) => pushLog('http', str.trim()) } }));
 // HTTP 请求日志（写入内存缓冲，便于前端查看）
-app.use(morgan('combined', { stream: { write: (str) => pushLog('http', str.trim()) } }));
 
 // 静态页面（UI 不鉴权），如需统一鉴权可移至 authGuard 之后
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -177,15 +161,6 @@ app.delete('/delete', async (req, res) => {
 });
 
 // 日志获取/清空
-app.get('/logs', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || '500', 10), LOG_MAX);
-  res.json({ lines: LOG_BUF.slice(-limit) });
-});
-app.delete('/logs', (req, res) => {
-  LOG_BUF.length = 0;
-  res.json({ ok: true });
-});
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[st-remote-backup] listening on ${PORT}, DATA_DIR=${DATA_DIR}, BACKUP_DIR=${BACKUP_DIR}`);
 });
