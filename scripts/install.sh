@@ -14,6 +14,13 @@ CRON_EXPR=""
 KEEP_NUM=5
 NO_FIREWALL=0
 
+# detect sudo (some environments like Termux may not have it)
+if command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+else
+  SUDO=""
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -p|--port) PORT="$2"; shift 2;;
@@ -34,9 +41,9 @@ PUBLIC_DIR="$APP_DIR/public"
 
 echo "[i] Installing to $APP_DIR (PORT=$PORT, DATA_DIR=$DATA_DIR, BACKUP_DIR=$BACKUP_DIR)"
 
-sudo mkdir -p "$APP_DIR" "$PUBLIC_DIR"
-sudo cp -f "$REPO_DIR/files/server.js" "$APP_DIR/server.js"
-sudo cp -f "$REPO_DIR/files/public/index.html" "$PUBLIC_DIR/index.html"
+$SUDO mkdir -p "$APP_DIR" "$PUBLIC_DIR"
+$SUDO cp -f "$REPO_DIR/files/server.js" "$APP_DIR/server.js"
+$SUDO cp -f "$REPO_DIR/files/public/index.html" "$PUBLIC_DIR/index.html"
 
 cd "$APP_DIR"
 if ! command -v node >/dev/null 2>&1; then
@@ -49,15 +56,15 @@ fi
 
 if ! command -v pm2 >/dev/null 2>&1; then
   echo "[i] Installing pm2 globally..."
-  sudo npm i -g pm2 >/dev/null 2>&1 || sudo npm i -g pm2
+  $SUDO npm i -g pm2 >/dev/null 2>&1 || $SUDO npm i -g pm2
 fi
 
 if [[ ! -f package.json ]]; then
-  sudo npm init -y >/dev/null 2>&1 || true
+  $SUDO npm init -y >/dev/null 2>&1 || true
 fi
 
-echo "[i] Installing service dependencies (express tar basic-auth morgan) ..."
-sudo npm i express tar basic-auth morgan >/dev/null 2>&1 || sudo npm i express tar basic-auth morgan
+echo "[i] Installing service dependencies (express tar basic-auth) ..."
+$SUDO npm i express tar basic-auth >/dev/null 2>&1 || $SUDO npm i express tar basic-auth
 
 echo "[i] Starting service with pm2 ..."
 PORT="$PORT" DATA_DIR="$DATA_DIR" BACKUP_DIR="$BACKUP_DIR" BASIC_USER="$BASIC_USER" BASIC_PASS="$BASIC_PASS" \
@@ -67,11 +74,11 @@ pm2 save
 if [[ "$NO_FIREWALL" -eq 0 ]]; then
   echo "[i] Trying to open firewall port $PORT (best-effort) ..."
   if command -v ufw >/dev/null 2>&1; then
-    sudo ufw allow "$PORT"/tcp || true
-    sudo ufw reload || true
+    $SUDO ufw allow "$PORT"/tcp || true
+    $SUDO ufw reload || true
   elif command -v firewall-cmd >/dev/null 2>&1; then
-    sudo firewall-cmd --permanent --add-port=$PORT/tcp || true
-    sudo firewall-cmd --reload || true
+    $SUDO firewall-cmd --permanent --add-port=$PORT/tcp || true
+    $SUDO firewall-cmd --reload || true
   else
     echo "[i] No ufw/firewalld detected, skip firewall step."
   fi
@@ -79,7 +86,7 @@ fi
 
 if [[ -n "$CRON_EXPR" ]]; then
   echo "[i] Installing daily backup cron ($CRON_EXPR, keep $KEEP_NUM) ..."
-  sudo tee /usr/local/bin/st-backup.sh >/dev/null <<EOS
+  $SUDO tee /usr/local/bin/st-backup.sh >/dev/null <<EOS
 #!/usr/bin/env bash
 set -euo pipefail
 AUTH='$BASIC_USER:$BASIC_PASS'
@@ -89,11 +96,11 @@ KEEP=$KEEP_NUM
 curl -sS --fail -u "$AUTH" -X POST "$BASE/backup" >/dev/null
 mkdir -p "$BACKUP_DIR"
 mapfile -t _FILES < <(ls -1t "$BACKUP_DIR"/st-data-*.tar.gz 2>/dev/null || true)
-if (( \\${#_FILES[@]} > KEEP )); then
-  printf '%s\\0' "\\${_FILES[@]:KEEP}" | xargs -0 -r rm -f --
+if (( \${#_FILES[@]} > KEEP )); then
+  printf '%s\0' "\${_FILES[@]:KEEP}" | xargs -0 -r rm -f --
 fi
 EOS
-  sudo chmod +x /usr/local/bin/st-backup.sh
+  $SUDO chmod +x /usr/local/bin/st-backup.sh
   # install crontab line (append if absent)
   (crontab -l 2>/dev/null || true; echo "$CRON_EXPR /usr/local/bin/st-backup.sh >> /var/log/st-backup.cron.log 2>&1") | crontab -
 fi
