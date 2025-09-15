@@ -105,7 +105,20 @@
                             健康检查
                         </button>
                     </div>
-                    <div id="list" class="custom-scrollbar bg-slate-900/60 p-2 sm:p-4 rounded-lg min-h-[250px] max-h-[50vh] overflow-y-auto border border-slate-800"></div>
+                    <div id="list" class="custom-scrollbar bg-slate-900/60 p-2 sm:p-4 rounded-lg min-h-[250px] max-h-[40vh] overflow-y-auto border border-slate-800"></div>
+                    
+                    <!-- 日志面板 -->
+                    <div class="mt-6">
+                      <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-slate-300">服务日志</h3>
+                        <div class="flex gap-2">
+                          <button id="log-refresh" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-1 px-3 rounded-lg">刷新</button>
+                          <button id="log-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-1 px-3 rounded-lg">自动刷新: 开</button>
+                          <button id="log-clear" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1 px-3 rounded-lg">清空</button>
+                        </div>
+                      </div>
+                      <pre id="log-box" class="custom-scrollbar bg-slate-900/60 p-3 rounded-lg max-h-[32vh] overflow-y-auto border border-slate-800 text-xs whitespace-pre-wrap"></pre>
+                    </div>
                 </div>
             </div>
         </div>
@@ -320,6 +333,29 @@
         confirmCancelBtn.onclick = hideConfirm;
 
         loadCfg();
+
+        // 日志功能
+        const logBox = document.getElementById('log-box');
+        const btnLogRefresh = document.getElementById('log-refresh');
+        const btnLogToggle = document.getElementById('log-toggle');
+        const btnLogClear = document.getElementById('log-clear');
+        let logAuto = true; let logTimer = null;
+        async function loadLogs(){
+          try {
+            const r = await fetch('/logs?limit=500', { headers: { 'Authorization': auth() }});
+            if (r.status === 401) return; // 认证失败时跳过
+            const j = await r.json();
+            if (Array.isArray(j.lines)) {
+              logBox.textContent = j.lines.join('\n');
+              logBox.scrollTop = logBox.scrollHeight;
+            }
+          } catch (_) {}
+        }
+        function startLogAuto(){ if (logTimer) clearInterval(logTimer); logTimer = setInterval(()=>{ if (logAuto) loadLogs(); }, 2000); }
+        btnLogRefresh?.addEventListener('click', loadLogs);
+        btnLogToggle?.addEventListener('click', ()=>{ logAuto=!logAuto; btnLogToggle.textContent = `自动刷新: ${logAuto?'开':'关'}`; if (logAuto) loadLogs(); });
+        btnLogClear?.addEventListener('click', async ()=>{ await fetch('/logs', { method:'DELETE', headers: { 'Authorization': auth() }}); logBox.textContent=''; });
+        startLogAuto();
 
     })();
     </script>
