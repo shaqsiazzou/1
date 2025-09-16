@@ -19,7 +19,8 @@ const LOG_MAX = 2000;
 const __origLog = console.log;
 const __origErr = console.error;
 function pushLog(level, msg) {
-  const line = `${new Date().toISOString()} [${level}] ${msg}`;
+  const ts = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+  const line = `${ts} [${level}] ${msg}`;
   LOG_BUF.push(line);
   if (LOG_BUF.length > LOG_MAX) LOG_BUF.splice(0, LOG_BUF.length - LOG_MAX);
   (level === 'error' ? __origErr : __origLog)(line);
