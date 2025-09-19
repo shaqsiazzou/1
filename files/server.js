@@ -1,3 +1,22 @@
+// 修改用户名密码接口
+app.post('/change-cred', async (req, res) => {
+  try {
+    const { user, pass } = req.body || {};
+    if (!user || !pass) return res.status(400).json({ ok: false, error: '用户名和密码不能为空' });
+    // 简单校验
+    if (typeof user !== 'string' || typeof pass !== 'string' || user.length < 2 || pass.length < 2) {
+      return res.status(400).json({ ok: false, error: '用户名和密码格式不正确' });
+    }
+    // 保存到 cred.json
+    await fsp.writeFile(CRED_FILE, JSON.stringify({ user, pass }), 'utf8');
+    USER = user;
+    PASS = pass;
+    res.json({ ok: true });
+    console.log(`[change-cred] 用户名密码已修改`);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 const express = require('express');
 const fs = require('fs');
 const fsp = require('fs').promises;
@@ -8,8 +27,23 @@ const basicAuth = require('basic-auth');
 const PORT = process.env.PORT || 8787;
 const DATA_DIR = process.env.DATA_DIR || '/root/sillytavern/data';
 const BACKUP_DIR = process.env.BACKUP_DIR || '/opt/st-remote-backup/backups';
-const USER = process.env.BASIC_USER || '';
-const PASS = process.env.BASIC_PASS || '';
+let USER = process.env.BASIC_USER || '';
+let PASS = process.env.BASIC_PASS || '';
+const CRED_FILE = path.join(__dirname, 'cred.json');
+
+// 尝试从 cred.json 读取用户名密码
+async function loadCred() {
+  try {
+    const raw = await fsp.readFile(CRED_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    if (obj.user && obj.pass) {
+      USER = obj.user;
+      PASS = obj.pass;
+    }
+  } catch {}
+}
+// 启动时加载一次
+loadCred();
 
 async function ensureDir(dir) { await fsp.mkdir(dir, { recursive: true }).catch(()=>{}); }
 
@@ -52,6 +86,8 @@ function authGuard(req, res, next) {
   res.set('WWW-Authenticate', 'Basic realm="st-backup"');
   return res.status(401).send('Unauthorized');
 }
+
+
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
