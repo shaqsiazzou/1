@@ -1,22 +1,3 @@
-// 修改用户名密码接口
-app.post('/change-cred', async (req, res) => {
-  try {
-    const { user, pass } = req.body || {};
-    if (!user || !pass) return res.status(400).json({ ok: false, error: '用户名和密码不能为空' });
-    // 简单校验
-    if (typeof user !== 'string' || typeof pass !== 'string' || user.length < 2 || pass.length < 2) {
-      return res.status(400).json({ ok: false, error: '用户名和密码格式不正确' });
-    }
-    // 保存到 cred.json
-    await fsp.writeFile(CRED_FILE, JSON.stringify({ user, pass }), 'utf8');
-    USER = user;
-    PASS = pass;
-    res.json({ ok: true });
-    console.log(`[change-cred] 用户名密码已修改`);
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
 const express = require('express');
 const fs = require('fs');
 const fsp = require('fs').promises;
@@ -192,6 +173,26 @@ app.delete('/delete', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('[delete] error:', e && e.stack || e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// 修改用户名密码接口
+app.post('/change-cred', async (req, res) => {
+  try {
+    const { user, pass } = req.body || {};
+    if (!user || !pass) return res.status(400).json({ ok: false, error: '用户名和密码不能为空' });
+    // 简单校验
+    if (typeof user !== 'string' || typeof pass !== 'string' || user.length < 2 || pass.length < 2) {
+      return res.status(400).json({ ok: false, error: '用户名和密码格式不正确' });
+    }
+    // 保存到 cred.json
+    await fsp.writeFile(CRED_FILE, JSON.stringify({ user, pass }), 'utf8');
+    USER = user;
+    PASS = pass;
+    res.json({ ok: true });
+    console.log(`[change-cred] 用户名密码已修改`);
+  } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
