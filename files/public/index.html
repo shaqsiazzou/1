@@ -71,10 +71,96 @@
                     </div>
                 </div>
                 <div id="login-status" class="h-6 text-center text-red-400 text-sm mt-4"></div>
-                <button id="connect-btn" class="glow-on-hover w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 mt-6">
-                    <svg id="connect-loader" class="animate-spin h-5 w-5 text-slate-900 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span id="connect-text">安全连接</span>
-                </button>
+                                <button id="connect-btn" class="glow-on-hover w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-slate-900 font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 mt-6">
+                                        <svg id="connect-loader" class="animate-spin h-5 w-5 text-slate-900 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <span id="connect-text">安全连接</span>
+                                </button>
+                                <div class="flex justify-end mt-2">
+                                    <button id="show-change-cred" class="text-xs text-cyan-400 hover:underline hover:text-fuchsia-400 transition">修改用户名/密码？</button>
+                                </div>
+        <!-- 修改用户名/密码弹窗 -->
+        <div id="change-cred-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl shadow-2xl w-full max-w-xs p-6 text-center relative">
+                <button id="close-change-cred" class="absolute right-3 top-3 text-slate-400 hover:text-white text-lg">&times;</button>
+                <h2 class="font-orbitron text-lg font-bold text-cyan-400 mb-2">修改用户名/密码</h2>
+                <form id="change-cred-form" class="space-y-3 text-left">
+                    <div>
+                        <label for="old-user" class="text-xs font-medium text-slate-300">当前用户名</label>
+                        <input id="old-user" type="text" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition" autocomplete="username">
+                    </div>
+                    <div>
+                        <label for="old-pass" class="text-xs font-medium text-slate-300">当前密码</label>
+                        <input id="old-pass" type="password" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition" autocomplete="current-password">
+                    </div>
+                    <div>
+                        <label for="new-user" class="text-xs font-medium text-slate-300">新用户名</label>
+                        <input id="new-user" type="text" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition" autocomplete="username">
+                    </div>
+                    <div>
+                        <label for="new-pass" class="text-xs font-medium text-slate-300">新密码</label>
+                        <input id="new-pass" type="password" class="mt-1 block w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition" autocomplete="new-password">
+                    </div>
+                    <div id="cred-status" class="h-6 text-center text-red-400 text-xs"></div>
+                    <button type="submit" class="glow-on-hover w-full flex items-center justify-center gap-2 bg-fuchsia-500 hover:bg-fuchsia-600 text-slate-900 font-bold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg shadow-fuchsia-500/20">保存</button>
+                </form>
+            </div>
+        </div>
+                // 修改用户名密码弹窗逻辑
+                const showChangeCredBtn = document.getElementById('show-change-cred');
+                const changeCredModal = document.getElementById('change-cred-modal');
+                const closeChangeCredBtn = document.getElementById('close-change-cred');
+                const changeCredForm = document.getElementById('change-cred-form');
+                const oldUserI = document.getElementById('old-user');
+                const oldPassI = document.getElementById('old-pass');
+                const newUserI = document.getElementById('new-user');
+                const newPassI = document.getElementById('new-pass');
+                const credStatus = document.getElementById('cred-status');
+
+                showChangeCredBtn.onclick = () => {
+                    changeCredModal.classList.remove('hidden');
+                    credStatus.textContent = '';
+                    oldUserI.value = userI.value;
+                    oldPassI.value = passI.value;
+                    newUserI.value = '';
+                    newPassI.value = '';
+                };
+                closeChangeCredBtn.onclick = () => { changeCredModal.classList.add('hidden'); };
+                changeCredModal.onclick = (e) => { if (e.target === changeCredModal) changeCredModal.classList.add('hidden'); };
+
+                if (changeCredForm) {
+                    changeCredForm.onsubmit = async (e) => {
+                        e.preventDefault();
+                        credStatus.textContent = '';
+                        const oldUser = oldUserI.value.trim();
+                        const oldPass = oldPassI.value.trim();
+                        const newUser = newUserI.value.trim();
+                        const newPass = newPassI.value.trim();
+                        if (!oldUser || !oldPass || !newUser || !newPass) {
+                            credStatus.textContent = '所有字段均不能为空';
+                            return;
+                        }
+                        credStatus.textContent = '提交中...';
+                        try {
+                            const resp = await fetch('/change-cred', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Basic ' + btoa(oldUser + ':' + oldPass),
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ user: newUser, pass: newPass })
+                            });
+                            const data = await resp.json();
+                            if (data.ok) {
+                                credStatus.textContent = '修改成功，请用新用户名密码登录';
+                                setTimeout(() => { changeCredModal.classList.add('hidden'); localStorage.removeItem('rb-ui-auth'); location.reload(); }, 1200);
+                            } else {
+                                credStatus.textContent = data.error || '修改失败';
+                            }
+                        } catch (err) {
+                            credStatus.textContent = '请求失败';
+                        }
+                    };
+                }
             </div>
         </div>
 

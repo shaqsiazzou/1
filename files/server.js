@@ -177,16 +177,19 @@ app.delete('/delete', async (req, res) => {
   }
 });
 
-// 修改用户名密码接口
+// 修改用户名密码接口（需旧用户名密码校验）
 app.post('/change-cred', async (req, res) => {
   try {
-    const { user, pass } = req.body || {};
-    if (!user || !pass) return res.status(400).json({ ok: false, error: '用户名和密码不能为空' });
-    // 简单校验
-    if (typeof user !== 'string' || typeof pass !== 'string' || user.length < 2 || pass.length < 2) {
-      return res.status(400).json({ ok: false, error: '用户名和密码格式不正确' });
+    // 校验旧用户名密码（用 basic-auth）
+    const creds = basicAuth(req);
+    if (!creds || creds.name !== USER || creds.pass !== PASS) {
+      return res.status(401).json({ ok: false, error: '旧用户名或密码错误' });
     }
-    // 保存到 cred.json
+    const { user, pass } = req.body || {};
+    if (!user || !pass) return res.status(400).json({ ok: false, error: '新用户名和密码不能为空' });
+    if (typeof user !== 'string' || typeof pass !== 'string' || user.length < 2 || pass.length < 2) {
+      return res.status(400).json({ ok: false, error: '新用户名和密码格式不正确' });
+    }
     await fsp.writeFile(CRED_FILE, JSON.stringify({ user, pass }), 'utf8');
     USER = user;
     PASS = pass;
